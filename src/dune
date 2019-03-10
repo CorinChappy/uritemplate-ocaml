@@ -1,5 +1,5 @@
 (library
-  (name uriTemplate)
+  (name uritemplate)
   (libraries str))
 
 (env

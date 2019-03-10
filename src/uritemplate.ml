@@ -53,6 +53,7 @@ let encode_str rex =
     (fun m -> String.get (Str.matched_string m) 0
               |> encode_char)
 
+(* This is the same as a standard encodeUriComponent, but also encoding ! *)
 let re_for_encode_reserved = Str.regexp "[^A-Za-z0-9-_.~*'()]"
 let uri_encode_reserved = encode_str re_for_encode_reserved
 

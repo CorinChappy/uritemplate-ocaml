@@ -1,0 +1,3 @@
+(test
+  (name uriTemplate_test)
+  (libraries uriTemplate oUnit))

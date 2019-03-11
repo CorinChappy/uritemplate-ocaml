@@ -1,3 +1,6 @@
+module String = Stdcompat.String
+module List = Stdcompat.List
+
 type expansion_type =
   | Simple (* {var} *)
   | Reserved (* {+var} *)
@@ -77,9 +80,9 @@ let form_query buff var_name var =
 
 let path_parameter buff var_name var =
   Buffer.add_string buff var_name;
-  match String.length var = 0 with
-  | true -> ()
-  | false -> Buffer.add_char buff '='; Buffer.add_string buff var
+  match var with
+  | "" -> ()
+  | var -> Buffer.add_char buff '='; Buffer.add_string buff var
 
 let determine_expr_function buff expr_type =
   buff

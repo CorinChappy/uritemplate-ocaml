@@ -1,0 +1,10 @@
+type variables = (string * string) list <json repr="object">
+type testcases = (string * string) list
+
+type example_set = {
+  ~level <ocaml default="4">: int;
+  variables: variables;
+  testcases: testcases;
+}
+
+type file = (string * example_set) list <json repr="object">

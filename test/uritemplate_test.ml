@@ -22,6 +22,22 @@ let test_fixture = "UriTemplate" >::: [
         )
     ];
 
+    "Tests with the prefix modifier (:)" >::: (
+      test_list_of_examples
+        ~variables:[
+          ("var", "value");
+          ("hello", "Hello World!");
+          ("path", "/foo/bar");
+        ]
+        ~cases:[
+          ("{var:3}", "val");
+          ("{var:30}", "value");
+          ("{+path:6}/here", "/foo/b/here");
+          ("{#path:6}/here", "#/foo/b/here");
+          ("{;hello:5}", ";hello=Hello");
+        ]
+    );
+
     "Example tests" >::: (
       let open Example_tests_t in
       List.map (fun (name, { variables; testcases; _ }) ->

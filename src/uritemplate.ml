@@ -1,5 +1,4 @@
 module String = Stdcompat.String
-module List = Stdcompat.List
 
 type expansion_type =
   | Simple (* {var} *)
@@ -64,12 +63,32 @@ let re_for_encode_full = Str.regexp "[^A-Za-z0-9;,/\\?:@&=\\+$-_\\.!~\\*'()#]"
 let uri_encode_full = encode_str re_for_encode_full
 
 
-let get_var expr_type var_name variables =
-  match List.assoc_opt var_name variables, expr_type with
-  | None, _ -> None
-  | Some var, Fragment
-  | Some var, Reserved -> Some (uri_encode_full var)
-  | Some var, _ -> Some (uri_encode_reserved var)
+let re_for_should_trim = Str.regexp "\\(.+\\):\\([0-9]+\\)"
+let get_trim_from_var_name var_name =
+  match Str.string_match re_for_should_trim var_name 0 with
+  (* -1 will cause sub to raise Invalid_argument, and return the full var *)
+  | false -> (var_name, -1)
+  | true -> (
+      let new_name = Str.matched_group 1 var_name in
+      let trim_num = Str.matched_group 2 var_name |> int_of_string in
+      (new_name, trim_num)
+    )
+
+let get_var expr_type var_name trim variables =
+  try
+    let var = List.assoc var_name variables in
+    let trimmed_var =
+      try
+        String.sub var 0 trim
+      with
+      | Invalid_argument _ -> var
+    in
+    match expr_type with
+    | Fragment
+    | Reserved -> Some (uri_encode_full trimmed_var)
+    | _ -> Some (uri_encode_reserved trimmed_var)
+  with
+  | Not_found -> None
 
 
 let simple_expr buff _ var =
@@ -94,7 +113,9 @@ let determine_expr_function buff expr_type =
 let add_var_to_buff buff variables expr_type =
   let sep_str = separator_for_expansion_type expr_type in
   let f = determine_expr_function buff expr_type in
-  fun var_name -> match get_var expr_type var_name variables with
+  fun var_name ->
+    let (var_name, trim) = get_trim_from_var_name var_name in
+    match get_var expr_type var_name trim variables with
     | None -> ()
     | Some var -> f var_name var; Buffer.add_char buff sep_str
 

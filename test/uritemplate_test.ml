@@ -2,7 +2,7 @@ open OUnit2
 
 open Uritemplate
 
-let assert_string_equal = assert_equal ~printer:(fun a -> a) ~cmp:String.equal
+let assert_string_equal = assert_equal ~printer:(fun a -> a)
 
 (* Test Fixture *)
 let test_fixture = "UriTemplate" >::: [

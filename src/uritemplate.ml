@@ -38,11 +38,8 @@ let separator_for_expansion_type = function
   | FormQuery | FormQueryContinuation -> '&'
 
 
-let re_for_tokens = Str.regexp "{[^{]+}\\|[^{}]+"
-let re_for_is_var_expr = Str.regexp "^{.*}"
-let re_for_prefix = Str.regexp "{\\([\\.#+/\\.;\\?&]?\\)\\([a-zA-Z0-9\\.%,_\\*:]+\\)}"
 
-let is_var_expr v = Str.string_match re_for_is_var_expr v 0
+let is_var_expr v = Str.string_match Regex.for_is_var_expr v 0
 
 (* Encoding *)
 let encode_char c =
@@ -56,16 +53,13 @@ let encode_str rex =
               |> encode_char)
 
 (* This is the same as a standard encodeUriComponent, but also encoding ! *)
-let re_for_encode_reserved = Str.regexp "[^A-Za-z0-9-_.~*'()]"
-let uri_encode_reserved = encode_str re_for_encode_reserved
+let uri_encode_reserved = encode_str Regex.for_encode_reserved
 
-let re_for_encode_full = Str.regexp "[^A-Za-z0-9;,/\\?:@&=\\+$-_\\.!~\\*'()#]"
-let uri_encode_full = encode_str re_for_encode_full
+let uri_encode_full = encode_str Regex.for_encode_full
 
 
-let re_for_should_trim = Str.regexp "\\(.+\\):\\([0-9]+\\)"
 let get_trim_from_var_name var_name =
-  match Str.string_match re_for_should_trim var_name 0 with
+  match Str.string_match Regex.trim_from_var_name var_name 0 with
   (* -1 will cause sub to raise Invalid_argument, and return the full var *)
   | false -> (var_name, -1)
   | true -> (
@@ -130,7 +124,7 @@ let replace_variable ~variables str =
   match is_var_expr str with
   | false -> uri_encode_full str
   | true ->
-    let _ = Str.string_match re_for_prefix str 0 in
+    let _ = Str.string_match Regex.for_prefix str 0 in
     let expansion_type = Str.matched_group 1 str |> expansion_type_of_string in
     let vars = Str.matched_group 2 str |> String.split_on_char ',' in
     let buff = create_buffer expansion_type in
@@ -143,7 +137,7 @@ let replace_variable ~variables str =
 let template_uri ~template ~variables =
   let buff = Buffer.create 10 in
   let rec aux index =
-    if Str.string_match re_for_tokens template index && index < (String.length template) then
+    if Str.string_match Regex.for_tokens template index && index < (String.length template) then
       let new_index = Str.match_end () in
       let replaced_var = Str.matched_string template |> replace_variable ~variables in
       Buffer.add_string buff replaced_var;

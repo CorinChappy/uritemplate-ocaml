@@ -8,7 +8,17 @@ let assert_string_equal = assert_equal ~printer:(fun a -> a)
 let test_list_of_examples ~variables ~cases =
   List.map
     (fun (template, expected) ->
-       template >:: (fun _ -> assert_string_equal expected (template_uri ~template ~variables))
+       template >:: (fun _ ->
+           let result = template_uri ~template ~variables in
+           match expected with
+           | `Single expected -> assert_string_equal expected result
+           | `Multiple lst -> (
+               match (List.exists ((=) result) lst)
+               with
+               | false -> assert_failure ("expected one of: [" ^ List.fold_left (fun s a -> a ^ " " ^ s) "" lst ^ "] \nbut got " ^ result)
+               | true -> ()
+             )
+         )
     ) cases
 
 
@@ -30,11 +40,12 @@ let test_fixture = "UriTemplate" >::: [
           ("path", "/foo/bar");
         ]
         ~cases:[
-          ("{var:3}", "val");
-          ("{var:30}", "value");
-          ("{+path:6}/here", "/foo/b/here");
-          ("{#path:6}/here", "#/foo/b/here");
-          ("{;hello:5}", ";hello=Hello");
+          ("{var:3}", `Single "val");
+          ("{var:30}", `Single "value");
+          ("{+path:6}/here", `Single "/foo/b/here");
+          ("{#path:6}/here", `Single "#/foo/b/here");
+          ("{;hello:5}", `Single ";hello=Hello");
+          ("{;hello:5}", `Multiple [";hello=Hello"]);
         ]
     );
 

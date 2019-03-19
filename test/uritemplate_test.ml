@@ -11,8 +11,8 @@ let test_list_of_examples ~variables ~cases =
        template >:: (fun _ ->
            let result = template_uri ~template ~variables in
            match expected with
-           | `Single expected -> assert_string_equal expected result
-           | `Multiple lst -> (
+           | `String expected -> assert_string_equal expected result
+           | `List lst -> (
                match (List.exists ((=) result) lst)
                with
                | false -> assert_failure ("expected one of: [" ^ List.fold_left (fun s a -> a ^ " " ^ s) "" lst ^ "] \nbut got " ^ result)
@@ -28,24 +28,47 @@ let test_fixture = "UriTemplate" >::: [
       test_case (fun _ ->
           assert_string_equal
             "https://example.com/a/b?b=b#e,f"
-            (template_uri ~template:"https://example.com{/a,b}{?b}{#e,f}" ~variables:[("a", "a"); ("b", "b"); ("e", "e"); ("f", "f")])
+            (template_uri_with_strings
+               ~template:"https://example.com{/a,b}{?b}{#e,f}"
+               ~variables:[("a",  "a"); ("b",  "b"); ("e",  "e"); ("f", "f")])
         )
     ];
 
     "Tests with the prefix modifier (:)" >::: (
       test_list_of_examples
         ~variables:[
-          ("var", "value");
-          ("hello", "Hello World!");
-          ("path", "/foo/bar");
+          ("var", `String "value");
+          ("hello", `String "Hello World!");
+          ("path", `String "/foo/bar");
         ]
         ~cases:[
-          ("{var:3}", `Single "val");
-          ("{var:30}", `Single "value");
-          ("{+path:6}/here", `Single "/foo/b/here");
-          ("{#path:6}/here", `Single "#/foo/b/here");
-          ("{;hello:5}", `Single ";hello=Hello");
-          ("{;hello:5}", `Multiple [";hello=Hello"]);
+          ("{var:3}", `String "val");
+          ("{var:30}", `String "value");
+          ("{+path:6}/here", `String "/foo/b/here");
+          ("{#path:6}/here", `String "#/foo/b/here");
+          ("{;hello:5}", `String ";hello=Hello");
+          ("{;hello:5}", `List [";hello=Hello"]);
+        ]
+    );
+
+    "Tests with a list attached to a variable" >::: (
+      test_list_of_examples
+        ~variables:[
+          ("var", `String "value");
+          ("hello", `String "Hello World!");
+          ("path", `String "/foo/bar");
+          ("list", `List ["red"; "green"; "blue"]);
+        ]
+        ~cases:[
+          ("{list}", `String "red,green,blue");
+          ("{+list}", `String "red,green,blue");
+          ("{#list}", `String "#red,green,blue");
+          ("X{.list}", `String "X.red,green,blue");
+          ("{/list}", `String "/red,green,blue");
+          ("{/list,path:4}", `String "/red,green,blue/%2Ffoo");
+          ("{;list}", `String ";list=red,green,blue");
+          ("{?list}", `String "?list=red,green,blue");
+          ("{&list}", `String "&list=red,green,blue");
         ]
     );
 

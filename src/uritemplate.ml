@@ -38,6 +38,10 @@ let separator_for_expansion_type = function
   | FormQuery | FormQueryContinuation -> '&'
 
 
+type variable = [
+  | `String of string
+  | `List of string list
+]
 
 let is_var_expr v = Str.string_match Regex.for_is_var_expr v 0
 
@@ -68,21 +72,18 @@ let get_trim_from_var_name var_name =
       (new_name, trim_num)
     )
 
-let get_var expr_type var_name trim variables =
+let trim_var var trim =
   try
-    let var = List.assoc var_name variables in
-    let trimmed_var =
-      try
-        String.sub var 0 trim
-      with
-      | Invalid_argument _ -> var
-    in
-    match expr_type with
-    | Fragment
-    | Reserved -> Some (uri_encode_full trimmed_var)
-    | _ -> Some (uri_encode_reserved trimmed_var)
+    String.sub var 0 trim
   with
-  | Not_found -> None
+  | Invalid_argument _ -> var
+
+let trim_and_encode_var expr_type trim var =
+  let trimmed_var = trim_var var trim in
+  match expr_type with
+  | Fragment
+  | Reserved -> uri_encode_full trimmed_var
+  | _ -> uri_encode_reserved trimmed_var
 
 
 let simple_expr buff _ var =
@@ -104,14 +105,33 @@ let determine_expr_function buff expr_type =
   | PathParameter -> path_parameter
   | _ -> simple_expr
 
+let rec combine_list_of_vars ?buff:(buff=Buffer.create 10) expr_type trim = function
+  | [] -> ""
+  | var::[] -> (
+      trim_and_encode_var expr_type trim var |> Buffer.add_string buff;
+      Buffer.contents buff
+    )
+  | var::rest -> (
+      trim_and_encode_var expr_type trim var |> Buffer.add_string buff;
+      Buffer.add_char buff ',';
+      combine_list_of_vars ~buff expr_type trim rest
+    )
+
+
 let add_var_to_buff buff variables expr_type =
   let sep_str = separator_for_expansion_type expr_type in
   let f = determine_expr_function buff expr_type in
   fun var_name ->
     let (var_name, trim) = get_trim_from_var_name var_name in
-    match get_var expr_type var_name trim variables with
-    | None -> ()
-    | Some var -> f var_name var; Buffer.add_char buff sep_str
+    try
+      let resolved_var = match List.assoc var_name variables with
+        | `String var -> trim_and_encode_var expr_type trim var
+        | `List vars -> combine_list_of_vars expr_type trim vars
+      in
+      f var_name resolved_var;
+      Buffer.add_char buff sep_str
+    with
+    | Not_found -> ()
 
 let create_buffer expr_type =
   let buff = Buffer.create 10 in
@@ -126,9 +146,9 @@ let replace_variable ~variables str =
   | true ->
     let _ = Str.string_match Regex.for_prefix str 0 in
     let expansion_type = Str.matched_group 1 str |> expansion_type_of_string in
-    let vars = Str.matched_group 2 str |> String.split_on_char ',' in
+    let template_vars = Str.matched_group 2 str |> String.split_on_char ',' in
     let buff = create_buffer expansion_type in
-    List.iter (add_var_to_buff buff variables expansion_type) vars;
+    List.iter (add_var_to_buff buff variables expansion_type) template_vars;
     match Buffer.length buff - 1 with
     | -1 | 0 -> ""
     | len -> Buffer.sub buff 0 len
@@ -146,3 +166,12 @@ let template_uri ~template ~variables =
       Buffer.contents buff
   in
   aux 0
+
+let template_uri_with_strings ~template ~variables =
+  template_uri
+    ~template
+    ~variables:(
+      List.map
+        (fun (var_name, var) -> (var_name, `String var))
+        variables
+    )

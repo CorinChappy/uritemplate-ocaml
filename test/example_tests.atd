@@ -1,9 +1,14 @@
 type testcase_result = [
-  | Single of string
-  | Multiple of string list
+  | String of string
+  | List of string list
 ] <json adapter.ocaml="Atd_utils.Variant_from_type">
 
-type variables = (string * string) list <json repr="object">
+type variable = [
+  | String of string
+  | List of string list
+] <json adapter.ocaml="Atd_utils.Variant_from_type">
+
+type variables = (string * variable) list <json repr="object">
 type testcases = (string * testcase_result) list
 
 type example_set = {

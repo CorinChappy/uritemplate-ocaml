@@ -4,8 +4,8 @@ module Variant_from_type : sig
 end =
 struct
   let normalize (j: Yojson.Safe.t) = match j with
-    | `String s -> `List [ `String "Single"; `String s ]
-    | `List l -> `List [ `String "Multiple"; `List l ]
+    | `String s -> `List [ `String "String"; `String s ]
+    | `List l -> `List [ `String "List"; `List l ]
     | a -> a
 
   let restore a = a

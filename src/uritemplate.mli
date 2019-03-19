@@ -1,6 +1,7 @@
 type variable = [
   | `String of string
   | `List of string list
+  | `Assoc of (string * string) list
 ]
 (** The type of a variable that can be templated *)
 
@@ -13,3 +14,6 @@ val template_uri_with_strings: template:string -> variables:(string * string) li
 
 val template_uri_with_lists: template:string -> variables:(string * string list) list -> string
 (** A shorthand for template_uri when all variables are lists of strings *)
+
+val template_uri_with_assoc_list: template:string -> variables:(string * (string * string) list) list -> string
+(** A shorthand for template_uri when all variables are association lists *)

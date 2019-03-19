@@ -41,6 +41,7 @@ let separator_for_expansion_type = function
 type variable = [
   | `String of string
   | `List of string list
+  | `Assoc of (string * string) list
 ]
 
 let is_var_expr v = Str.string_match Regex.for_is_var_expr v 0
@@ -117,6 +118,10 @@ let rec combine_list_of_vars ?buff:(buff=Buffer.create 10) expr_type trim = func
       combine_list_of_vars ~buff expr_type trim rest
     )
 
+let combine_assoc_of_vars expr_type trim vars =
+  vars
+  |> List.fold_left (fun acc (a, b) -> a::b::acc) []
+  |> combine_list_of_vars expr_type trim
 
 let add_var_to_buff buff variables expr_type =
   let sep_str = separator_for_expansion_type expr_type in
@@ -127,6 +132,7 @@ let add_var_to_buff buff variables expr_type =
       let resolved_var = match List.assoc var_name variables with
         | `String var -> trim_and_encode_var expr_type trim var
         | `List vars -> combine_list_of_vars expr_type trim vars
+        | `Assoc vars -> combine_assoc_of_vars expr_type trim vars
       in
       f var_name resolved_var;
       Buffer.add_char buff sep_str
@@ -182,5 +188,14 @@ let template_uri_with_lists ~template ~variables =
     ~variables:(
       List.map
         (fun (var_name, var) -> (var_name, `List var))
+        variables
+    )
+
+let template_uri_with_assoc_list ~template ~variables =
+  template_uri
+    ~template
+    ~variables:(
+      List.map
+        (fun (var_name, var) -> (var_name, `Assoc var))
         variables
     )

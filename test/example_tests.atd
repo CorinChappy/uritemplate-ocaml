@@ -6,6 +6,7 @@ type testcase_result = [
 type variable = [
   | String of string
   | List of string list
+  | Assoc of (string * string) list <json repr="object">
 ] <json adapter.ocaml="Atd_utils.Variant_from_type">
 
 type variables = (string * variable) list <json repr="object">

@@ -175,3 +175,12 @@ let template_uri_with_strings ~template ~variables =
         (fun (var_name, var) -> (var_name, `String var))
         variables
     )
+
+let template_uri_with_lists ~template ~variables =
+  template_uri
+    ~template
+    ~variables:(
+      List.map
+        (fun (var_name, var) -> (var_name, `List var))
+        variables
+    )

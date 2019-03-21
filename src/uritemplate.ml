@@ -10,6 +10,11 @@ type expansion_type =
   | FormQuery (* {?var} *)
   | FormQueryContinuation (* {&var} *)
 
+type value_modifier =
+  | None
+  | Prefix of int (* {var:N} *)
+  | Composite (* {var*} *)
+
 let expansion_type_of_string = function
   | "+" -> Reserved
   | "#" -> Fragment
@@ -63,24 +68,36 @@ let uri_encode_reserved = encode_str Regex.for_encode_reserved
 let uri_encode_full = encode_str Regex.for_encode_full
 
 
-let get_trim_from_var_name var_name =
-  match Str.string_match Regex.trim_from_var_name var_name 0 with
-  (* -1 will cause sub to raise Invalid_argument, and return the full var *)
-  | false -> (var_name, -1)
+let get_modifier_from_var_name var_name =
+  (* Detect a composite value *)
+  match Str.string_match Regex.compsite_from_var_name var_name 0 with
   | true -> (
       let new_name = Str.matched_group 1 var_name in
-      let trim_num = Str.matched_group 2 var_name |> int_of_string in
-      (new_name, trim_num)
+      (new_name, Composite)
+    )
+  | false -> (
+      match Str.string_match Regex.trim_from_var_name var_name 0 with
+      (* -1 will cause sub to raise Invalid_argument, and return the full var *)
+      | false -> (var_name, None)
+      | true -> (
+          let new_name = Str.matched_group 1 var_name in
+          let trim_num = Str.matched_group 2 var_name |> int_of_string in
+          (new_name, Prefix trim_num)
+        )
     )
 
-let trim_var var trim =
-  try
-    String.sub var 0 trim
-  with
-  | Invalid_argument _ -> var
+let trim_var var modifier =
+  match modifier with
+  | Composite | None -> var
+  | Prefix trim -> (
+      try
+        String.sub var 0 trim
+      with
+      | Invalid_argument _ -> var
+    )
 
-let trim_and_encode_var expr_type trim var =
-  let trimmed_var = trim_var var trim in
+let trim_and_encode_var expr_type modifier var =
+  let trimmed_var = trim_var var modifier in
   match expr_type with
   | Fragment
   | Reserved -> uri_encode_full trimmed_var
@@ -106,16 +123,16 @@ let determine_expr_function buff expr_type =
   | PathParameter -> path_parameter
   | _ -> simple_expr
 
-let rec combine_list_of_vars ?buff:(buff=Buffer.create 10) expr_type trim = function
+let rec combine_list_of_vars ?buff:(buff=Buffer.create 10) expr_type modifier = function
   | [] -> ""
   | var::[] -> (
-      trim_and_encode_var expr_type trim var |> Buffer.add_string buff;
+      trim_and_encode_var expr_type modifier var |> Buffer.add_string buff;
       Buffer.contents buff
     )
   | var::rest -> (
-      trim_and_encode_var expr_type trim var |> Buffer.add_string buff;
+      trim_and_encode_var expr_type modifier var |> Buffer.add_string buff;
       Buffer.add_char buff ',';
-      combine_list_of_vars ~buff expr_type trim rest
+      combine_list_of_vars ~buff expr_type modifier rest
     )
 
 let combine_assoc_of_vars expr_type trim vars =
@@ -123,19 +140,41 @@ let combine_assoc_of_vars expr_type trim vars =
   |> List.fold_left (fun acc (a, b) -> a::b::acc) []
   |> combine_list_of_vars expr_type trim
 
+let apply_standard_modifier buff sep_str f var_name variables expr_type modifier =
+  let resolved_var = match List.assoc var_name variables with
+    | `String var -> trim_and_encode_var expr_type modifier var
+    | `List vars -> combine_list_of_vars expr_type modifier vars
+    | `Assoc vars -> combine_assoc_of_vars expr_type modifier vars
+  in
+  f var_name resolved_var;
+  Buffer.add_char buff sep_str
+
+let apply_composite_modifier buff sep_str f var_name (variables : (string * variable) list) expr_type modifier =
+  match List.assoc var_name variables with
+  | `String _ -> apply_standard_modifier buff sep_str f var_name variables expr_type modifier
+  | `List vars -> List.iter (fun var ->
+      let resolved_var = trim_and_encode_var expr_type modifier var in
+      f var_name resolved_var;
+      Buffer.add_char buff sep_str
+    ) vars
+
+  | `Assoc vars -> List.iter (fun (var_name, var) ->
+      let resolved_var = trim_and_encode_var expr_type modifier var in
+      form_query buff var_name resolved_var;
+      Buffer.add_char buff sep_str
+    ) vars
+
+
+
 let add_var_to_buff buff variables expr_type =
   let sep_str = separator_for_expansion_type expr_type in
   let f = determine_expr_function buff expr_type in
   fun var_name ->
-    let (var_name, trim) = get_trim_from_var_name var_name in
+    let (var_name, modifier) = get_modifier_from_var_name var_name in
     try
-      let resolved_var = match List.assoc var_name variables with
-        | `String var -> trim_and_encode_var expr_type trim var
-        | `List vars -> combine_list_of_vars expr_type trim vars
-        | `Assoc vars -> combine_assoc_of_vars expr_type trim vars
-      in
-      f var_name resolved_var;
-      Buffer.add_char buff sep_str
+      match modifier with
+      | Composite -> apply_composite_modifier buff sep_str f var_name variables expr_type modifier
+      | _ -> apply_standard_modifier buff sep_str f var_name variables expr_type modifier
     with
     | Not_found -> ()
 

@@ -149,9 +149,13 @@ let apply_standard_modifier buff sep_str f var_name variables expr_type modifier
   f var_name resolved_var;
   Buffer.add_char buff sep_str
 
-let apply_composite_modifier buff sep_str f var_name (variables : (string * variable) list) expr_type modifier =
+let apply_composite_modifier buff sep_str f var_name variables expr_type modifier =
   match List.assoc var_name variables with
-  | `String _ -> apply_standard_modifier buff sep_str f var_name variables expr_type modifier
+  | `String var -> (
+      let resolved_var = trim_and_encode_var expr_type modifier var in
+      f var_name resolved_var;
+      Buffer.add_char buff sep_str
+    )
   | `List vars -> List.iter (fun var ->
       let resolved_var = trim_and_encode_var expr_type modifier var in
       f var_name resolved_var;

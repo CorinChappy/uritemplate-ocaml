@@ -1,46 +1,5 @@
 module String = Stdcompat.String
-
-type expansion_type =
-  | Simple (* {var} *)
-  | Reserved (* {+var} *)
-  | Fragment (* {#var} *)
-  | Dot (* {.var} *)
-  | PathSegment (* {/var} *)
-  | PathParameter (* {;var} *)
-  | FormQuery (* {?var} *)
-  | FormQueryContinuation (* {&var} *)
-
-type value_modifier =
-  | None
-  | Prefix of int (* {var:N} *)
-  | Composite (* {var*} *)
-
-let expansion_type_of_string = function
-  | "+" -> Reserved
-  | "#" -> Fragment
-  | "." -> Dot
-  | "/" -> PathSegment
-  | ";" -> PathParameter
-  | "?" -> FormQuery
-  | "&" -> FormQueryContinuation
-  | _ -> Simple
-
-let string_of_expansion_type = function
-  | Reserved -> "+"
-  | Fragment -> "#"
-  | Dot -> "."
-  | PathSegment -> "/"
-  | PathParameter -> ";"
-  | FormQuery -> "?"
-  | FormQueryContinuation -> "&"
-  | Simple -> ""
-
-let separator_for_expansion_type = function
-  | Simple | Reserved | Fragment -> ','
-  | Dot -> '.'
-  | PathSegment -> '/'
-  | PathParameter -> ';'
-  | FormQuery | FormQueryContinuation -> '&'
+module Template = Template
 
 
 type variable = [
@@ -48,8 +7,6 @@ type variable = [
   | `List of string list
   | `Assoc of (string * string) list
 ]
-
-let is_var_expr v = Str.string_match Regex.for_is_var_expr v 0
 
 (* Encoding *)
 let encode_char c =
@@ -67,28 +24,10 @@ let uri_encode_reserved = encode_str Regex.for_encode_reserved
 
 let uri_encode_full = encode_str Regex.for_encode_full
 
-
-let get_modifier_from_var_name var_name =
-  (* Detect a composite value *)
-  match Str.string_match Regex.compsite_from_var_name var_name 0 with
-  | true -> (
-      let new_name = Str.matched_group 1 var_name in
-      (new_name, Composite)
-    )
-  | false -> (
-      match Str.string_match Regex.trim_from_var_name var_name 0 with
-      (* -1 will cause sub to raise Invalid_argument, and return the full var *)
-      | false -> (var_name, None)
-      | true -> (
-          let new_name = Str.matched_group 1 var_name in
-          let trim_num = Str.matched_group 2 var_name |> int_of_string in
-          (new_name, Prefix trim_num)
-        )
-    )
-
 let trim_var var modifier =
+  let open Template in
   match modifier with
-  | Composite | None -> var
+  | Composite | NoModifier -> var
   | Prefix trim -> (
       try
         String.sub var 0 trim
@@ -97,6 +36,7 @@ let trim_var var modifier =
     )
 
 let trim_and_encode_var expr_type modifier var =
+  let open Template in
   let trimmed_var = trim_var var modifier in
   match expr_type with
   | Fragment
@@ -117,6 +57,7 @@ let path_parameter buff var_name var =
   | var -> Buffer.add_char buff '='; Buffer.add_string buff var
 
 let determine_expr_function buff expr_type =
+  let open Template in
   buff
   |> match expr_type with
   | FormQuery | FormQueryContinuation -> form_query
@@ -169,52 +110,48 @@ let apply_composite_modifier buff sep_str f var_name variables expr_type modifie
     ) vars
 
 
+let add_var_to_buffer buffer variables expansion_type sep_str f ({ name; value_modifier; } : Template.variable_expression) =
+  try
+    match value_modifier with
+    | Composite -> apply_composite_modifier buffer sep_str f name variables expansion_type value_modifier
+    | _ -> apply_standard_modifier buffer sep_str f name variables expansion_type value_modifier
+  with
+  | Not_found -> ()
 
-let add_var_to_buff buff variables expr_type =
-  let sep_str = separator_for_expansion_type expr_type in
-  let f = determine_expr_function buff expr_type in
-  fun var_name ->
-    let (var_name, modifier) = get_modifier_from_var_name var_name in
-    try
-      match modifier with
-      | Composite -> apply_composite_modifier buff sep_str f var_name variables expr_type modifier
-      | _ -> apply_standard_modifier buff sep_str f var_name variables expr_type modifier
-    with
-    | Not_found -> ()
+let add_op_to_buffer buffer = function
+  | Template.Reserved -> ()
+  | expansion_type ->
+    Template.string_of_expansion_type expansion_type |> Buffer.add_string buffer
 
-let create_buffer expr_type =
-  let buff = Buffer.create 10 in
-  match expr_type with
-  | Reserved -> buff
-  | _ -> string_of_expansion_type expr_type |> Buffer.add_string buff; buff
+let resolve_expression buffer variables ({ expansion_type; variable_expressions; } : Template.expression) =
+  let sep_str = Template.separator_for_expansion_type expansion_type in
+  let f = determine_expr_function buffer expansion_type in
+  add_op_to_buffer buffer expansion_type;
+  List.iter (add_var_to_buffer buffer variables expansion_type sep_str f) variable_expressions;
+  match Buffer.length buffer - 1 with
+  | -1 | 0 -> ()
+  | len -> Buffer.truncate buffer len
 
 
-let replace_variable ~variables str =
-  match is_var_expr str with
-  | false -> uri_encode_full str
-  | true ->
-    let _ = Str.string_match Regex.for_prefix str 0 in
-    let expansion_type = Str.matched_group 1 str |> expansion_type_of_string in
-    let template_vars = Str.matched_group 2 str |> String.split_on_char ',' in
-    let buff = create_buffer expansion_type in
-    List.iter (add_var_to_buff buff variables expansion_type) template_vars;
-    match Buffer.length buff - 1 with
-    | -1 | 0 -> ""
-    | len -> Buffer.sub buff 0 len
-
+let resolve_part variables part =
+  let open Template in
+  let buffer = Buffer.create 10 in
+  let _ = match part with
+    | Literal str -> Buffer.add_string buffer str
+    | Expression expr -> resolve_expression buffer variables expr
+  in
+  buffer
 
 let template_uri ~template ~variables =
-  let buff = Buffer.create 10 in
-  let rec aux index =
-    if Str.string_match Regex.for_tokens template index && index < (String.length template) then
-      let new_index = Str.match_end () in
-      let replaced_var = Str.matched_string template |> replace_variable ~variables in
-      Buffer.add_string buff replaced_var;
-      aux new_index
-    else
-      Buffer.contents buff
-  in
-  aux 0
+  let parsed_template = Template.of_string template in
+  let buffer = Buffer.create 10 in
+  List.iter (fun part ->
+      resolve_part variables part
+      |> Buffer.add_buffer buffer
+    ) parsed_template.template;
+  Buffer.contents buffer
+
+
 
 let template_uri_with_strings ~template ~variables =
   template_uri

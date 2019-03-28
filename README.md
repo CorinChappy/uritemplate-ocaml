@@ -7,6 +7,8 @@ Work in progress implementation of URI templates for OCaml. (RFC6570 - http://to
 
 ODoc documentation avaliable [here](https://corinchappy.github.io/uritemplate-ocaml/).
 
+Avaliable on [opam](https://opam.ocaml.org/packages/uritemplate/0)
+
 ## Usage
 
 ```ocaml

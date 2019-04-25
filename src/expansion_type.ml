@@ -1,12 +1,12 @@
 type t =
-  | Simple (** \{var\} *)
-  | Reserved (** \{+var\} *)
-  | Fragment (** \{#var\} *)
-  | Dot (** \{.var\} *)
-  | PathSegment (** \{/var\} *)
-  | PathParameter (** \{;var\} *)
-  | FormQuery (** \{?var\} *)
-  | FormQueryContinuation (** \{&var\} *)
+  | Simple (* {var} *)
+  | Reserved (* {+var} *)
+  | Fragment (* {#var} *)
+  | Dot (* {.var} *)
+  | PathSegment (* {/var} *)
+  | PathParameter (* {;var} *)
+  | FormQuery (* {?var} *)
+  | FormQueryContinuation (* {&var} *)
 
 let expansion_type_of_string = function
   | "+" -> Reserved

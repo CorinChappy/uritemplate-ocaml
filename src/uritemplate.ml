@@ -1,5 +1,8 @@
+open Template
 module String = Stdcompat.String
 module Template = Template
+module Parser = Parser
+module Expansion_type = Expansion_type
 
 
 type variable = [
@@ -25,7 +28,6 @@ let uri_encode_reserved = encode_str Regex.for_encode_reserved
 let uri_encode_full = encode_str Regex.for_encode_full
 
 let trim_var var modifier =
-  let open Template in
   match modifier with
   | Composite | NoModifier -> var
   | Prefix trim -> (
@@ -36,7 +38,7 @@ let trim_var var modifier =
     )
 
 let trim_and_encode_var expr_type modifier var =
-  let open Template in
+  let open Expansion_type in
   let trimmed_var = trim_var var modifier in
   match expr_type with
   | Fragment
@@ -57,7 +59,7 @@ let path_parameter buff var_name var =
   | var -> Buffer.add_char buff '='; Buffer.add_string buff var
 
 let determine_expr_function buff expr_type =
-  let open Template in
+  let open Expansion_type in
   buff
   |> match expr_type with
   | FormQuery | FormQueryContinuation -> form_query
@@ -110,8 +112,10 @@ let apply_composite_modifier buff sep_str f var_name variables expr_type modifie
     ) vars
 
 
-let add_var_to_buffer buffer variables expansion_type sep_str f ({ name; value_modifier; } : Template.variable_expression) =
+let add_var_to_buffer buffer variables expansion_type sep_str f variable_expression =
   try
+    let name = Template.get_variable_expression_name variable_expression in
+    let value_modifier = Template.get_variable_expression_modifier variable_expression in
     match value_modifier with
     | Composite -> apply_composite_modifier buffer sep_str f name variables expansion_type value_modifier
     | _ -> apply_standard_modifier buffer sep_str f name variables expansion_type value_modifier
@@ -119,12 +123,14 @@ let add_var_to_buffer buffer variables expansion_type sep_str f ({ name; value_m
   | Not_found -> ()
 
 let add_op_to_buffer buffer = function
-  | Template.Reserved -> ()
+  | Expansion_type.Reserved -> ()
   | expansion_type ->
-    Template.string_of_expansion_type expansion_type |> Buffer.add_string buffer
+    Expansion_type.string_of_expansion_type expansion_type |> Buffer.add_string buffer
 
-let resolve_expression buffer variables ({ expansion_type; variable_expressions; } : Template.expression) =
-  let sep_str = Template.separator_for_expansion_type expansion_type in
+let resolve_expression buffer variables expression =
+  let expansion_type = Template.get_expansion_type expression in
+  let variable_expressions = Template.get_variable_expressions expression in
+  let sep_str = Expansion_type.separator_for_expansion_type expansion_type in
   let f = determine_expr_function buffer expansion_type in
   add_op_to_buffer buffer expansion_type;
   List.iter (add_var_to_buffer buffer variables expansion_type sep_str f) variable_expressions;
@@ -134,7 +140,6 @@ let resolve_expression buffer variables ({ expansion_type; variable_expressions;
 
 
 let resolve_part variables part =
-  let open Template in
   let buffer = Buffer.create 10 in
   let _ = match part with
     | Literal str -> Buffer.add_string buffer str
@@ -143,12 +148,12 @@ let resolve_part variables part =
   buffer
 
 let template_uri ~template ~variables =
-  let parsed_template = Template.of_string template in
+  let parsed_template = Parser.template_of_string template in
   let buffer = Buffer.create 10 in
   List.iter (fun part ->
       resolve_part variables part
       |> Buffer.add_buffer buffer
-    ) parsed_template.template;
+    ) (Template.parts_of_t parsed_template);
   Buffer.contents buffer
 
 

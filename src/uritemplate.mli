@@ -1,5 +1,6 @@
 module Template = Template
 module Parser = Parser
+module Expansion = Expansion
 module Expansion_type = Expansion_type
 
 type variable = [

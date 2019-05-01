@@ -1,4 +1,5 @@
 module String = Stdcompat.String
+module Buffer = Stdcompat.Buffer
 
 
 type variable = [

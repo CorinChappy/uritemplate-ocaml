@@ -1,3 +1,4 @@
+module String = Stdcompat.String
 open Expansion_type
 
 let is_var_expr v = Str.string_match Regex.for_is_var_expr v 0

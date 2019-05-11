@@ -19,6 +19,13 @@ type template_part =
 type t
 (** The type of a template *)
 
+val empty : t
+
+val add_part : t -> template_part -> t
+
+val add_literal : t -> string -> t
+val add_expression : t ->  Expansion_type.t -> variable_expression list -> t
+val add_single_expression : t ->  Expansion_type.t -> variable_expression -> t
 
 val create : template_part list -> t
 

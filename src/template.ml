@@ -22,7 +22,7 @@ type t = {
 }
 
 
-let create parts = { parts }
+let create parts = { parts = List.rev parts }
 
 let create_expression expansion_type variable_expressions = {
   expansion_type;
@@ -39,8 +39,22 @@ let create_variable_expression ?value_modifier:(value_modifier = NoModifier) nam
   value_modifier
 }
 
+let empty = { parts = [] }
 
-let parts_of_t { parts; } = parts
+let add_part t part = { parts = part::t.parts }
+
+let add_literal t lit = add_part t (Literal lit)
+
+let add_expression t expansion_type variable_expressions =
+  Expression (create_expression expansion_type variable_expressions)
+  |> add_part t
+
+let add_single_expression t expansion_type variable_expression =
+  Expression (create_single_expression expansion_type variable_expression)
+  |> add_part t
+
+
+let parts_of_t { parts; } = List.rev parts
 
 let get_expansion_type { expansion_type; _ } = expansion_type
 let get_variable_expressions { variable_expressions; _ } = variable_expressions

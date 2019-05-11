@@ -33,17 +33,13 @@ let part_of_string str =
     Template.Expression (Template.create_expression expansion_type variable_expressions)
 
 
-let parts_of_string str =
-  let rec aux index parts =
+let template_of_string str =
+  let rec aux index template =
     if Str.string_match Regex.for_tokens str index && index < (String.length str) then
       let new_index = Str.match_end () in
       let part = Str.matched_string str |> part_of_string in
-      aux new_index (part::parts)
+      aux new_index (Template.add_part template part)
     else
-      List.rev parts
+      template
   in
-  aux 0 []
-
-let template_of_string str =
-  let template = parts_of_string str in
-  Template.create template
+  aux 0 Template.empty

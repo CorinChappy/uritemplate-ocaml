@@ -79,6 +79,3 @@ let test_fixture = "UriTemplate" >::: [
         ) (Example_tests_j.file_of_string Samples.json)
     )
   ]
-
-
-let _ = run_test_tt_main test_fixture

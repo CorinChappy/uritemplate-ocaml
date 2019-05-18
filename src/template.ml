@@ -61,3 +61,22 @@ let get_variable_expressions { variable_expressions; _ } = variable_expressions
 
 let get_variable_expression_name { name; _ } = name
 let get_variable_expression_modifier { value_modifier; _ } = value_modifier
+
+let part_is_literal = function
+  | Literal _ -> true
+  | _ -> false
+let part_is_expression = function
+  | Expression _ -> true
+  | _ -> false
+
+let get_variable_names { parts; } =
+  List.filter part_is_expression parts
+  |> List.map (function
+      | Expression e -> (
+          get_variable_expressions e
+          |> List.map get_variable_expression_name
+        )
+      | _ -> assert false
+    )
+  |> List.rev
+  |> List.flatten

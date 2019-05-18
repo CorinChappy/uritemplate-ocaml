@@ -43,3 +43,8 @@ val get_variable_expressions : expression -> variable_expression list
 
 val get_variable_expression_name : variable_expression -> string
 val get_variable_expression_modifier : variable_expression -> value_modifier
+
+val part_is_literal : template_part -> bool
+val part_is_expression : template_part -> bool
+
+val get_variable_names : t -> string list

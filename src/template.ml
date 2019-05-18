@@ -41,17 +41,17 @@ let create_variable_expression ?value_modifier:(value_modifier = NoModifier) nam
 
 let empty = { parts = [] }
 
-let add_part t part = { parts = part::t.parts }
+let add_part part t = { parts = part::t.parts }
 
-let add_literal t lit = add_part t (Literal lit)
+let add_literal lit = add_part (Literal lit)
 
-let add_expression t expansion_type variable_expressions =
+let add_expression expansion_type variable_expressions =
   Expression (create_expression expansion_type variable_expressions)
-  |> add_part t
+  |> add_part
 
-let add_single_expression t expansion_type variable_expression =
+let add_single_expression expansion_type variable_expression =
   Expression (create_single_expression expansion_type variable_expression)
-  |> add_part t
+  |> add_part
 
 
 let parts_of_t { parts; } = List.rev parts

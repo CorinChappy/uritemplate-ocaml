@@ -38,7 +38,7 @@ let template_of_string str =
     if Str.string_match Regex.for_tokens str index && index < (String.length str) then
       let new_index = Str.match_end () in
       let part = Str.matched_string str |> part_of_string in
-      aux new_index (Template.add_part template part)
+      aux new_index (Template.add_part part template)
     else
       template
   in

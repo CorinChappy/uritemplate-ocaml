@@ -7,13 +7,22 @@ Work in progress implementation of URI templates for OCaml. (RFC6570 - http://to
 
 ODoc documentation avaliable [here](https://corinchappy.github.io/uritemplate-ocaml/).
 
-Avaliable on [opam](https://opam.ocaml.org/packages/uritemplate/)
+## Install via opam
+Easiest way to install is via [opam](https://opam.ocaml.org/packages/uritemplate/):
+```bash
+$ opam install uritemplate
+```
 
 ## Usage
 
 ```ocaml
 # #require "uritemplate";;
 
-# template_uri_with_strings ~template:"https://example.com{/a,b}{?b}{#e,f}" ~variables:[("a", "a"); ("b", "b"); ("e", "e"); ("f", "f")];;
+# Uritemplate.template_uri
+    ~template:"https://example.com{/a,b}{?b}{#e,f}"
+    ~variables:[("a", `String "a");
+              ("b", `List ["b"; "c"]);
+              ("e", `String "e");
+              ("f", `String "f")];;
 - : string = "https://example.com/a/b?b=b#e,f"
 ```

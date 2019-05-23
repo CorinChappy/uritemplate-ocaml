@@ -24,5 +24,5 @@ $ opam install uritemplate
               ("b", `List ["b"; "c"]);
               ("e", `String "e");
               ("f", `String "f")];;
-- : string = "https://example.com/a/b?b=b#e,f"
+- : string = "https://example.com/a/b,c?b=b,c#e,f"
 ```

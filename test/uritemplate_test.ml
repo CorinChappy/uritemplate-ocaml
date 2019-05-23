@@ -27,13 +27,13 @@ let test_fixture = "UriTemplate" >::: [
     "README samples" >::: [
       test_case (fun _ ->
           assert_string_equal
-            "https://example.com/a/b,c?b=b,c#e,f"
+            "https://example.com/a?b=b&c=c#e,f,g"
             (template_uri
-               ~template:"https://example.com{/a,b}{?b}{#e,f}"
+               ~template:"https://example.com{/a}{?b*}{#e,f}"
                ~variables:[("a", `String "a");
-                           ("b", `List ["b"; "c"]);
+                           ("b", `Assoc [("b", "b"); ("c", "c")]);
                            ("e", `String "e");
-                           ("f", `String "f")])
+                           ("f", `List ["f"; "g"])])
         )
     ];
 

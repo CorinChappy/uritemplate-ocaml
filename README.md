@@ -19,10 +19,10 @@ $ opam install uritemplate
 # #require "uritemplate";;
 
 # Uritemplate.template_uri
-    ~template:"https://example.com{/a,b}{?b}{#e,f}"
+    ~template:"https://example.com{/a}{?b*}{#e,f}"
     ~variables:[("a", `String "a");
-              ("b", `List ["b"; "c"]);
-              ("e", `String "e");
-              ("f", `String "f")];;
-- : string = "https://example.com/a/b,c?b=b,c#e,f"
+                ("b", `Assoc [("b", "b"); ("c", "c")]);
+                ("e", `String "e");
+                ("f", `List ["f"; "g"])];;
+- : string = "https://example.com/a?b=b&c=c#e,f,g"
 ```

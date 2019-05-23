@@ -21,6 +21,15 @@ type t = {
   parts: template_part list
 }
 
+let string_of_value_modifier = function
+  | NoModifier -> ""
+  | Prefix i -> Printf.sprintf ":%i" i
+  | Composite -> "*"
+
+
+let string_of_variable_expression { name; value_modifier; } =
+  name ^ (string_of_value_modifier value_modifier)
+
 
 let create parts = { parts = List.rev parts }
 
@@ -80,3 +89,30 @@ let get_variable_names { parts; } =
     )
   |> List.rev
   |> List.flatten
+
+let buffer_of_expression { expansion_type; variable_expressions; } =
+  let b = Buffer.create 10 in
+  if List.length variable_expressions = 0 then
+    b
+  else begin
+    Buffer.add_string b (Expansion_type.string_of_expansion_type expansion_type);
+    List.iter (fun ve ->
+        Buffer.add_string b (string_of_variable_expression ve);
+        Buffer.add_char b ','
+      ) variable_expressions;
+    Buffer.truncate b ((Buffer.length b) - 1);
+    b
+  end
+
+let string_of_template { parts; } =
+  let b = Buffer.create 10 in
+  List.rev parts
+  |> List.iter (function
+      | Literal s -> Buffer.add_string b s
+      | Expression e -> (
+          Buffer.add_char b '{';
+          Buffer.add_buffer b (buffer_of_expression e);
+          Buffer.add_char b '}'
+        )
+    );
+  Buffer.contents b

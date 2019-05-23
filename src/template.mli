@@ -48,3 +48,8 @@ val part_is_literal : template_part -> bool
 val part_is_expression : template_part -> bool
 
 val get_variable_names : t -> string list
+
+val string_of_value_modifier : value_modifier -> string
+val string_of_variable_expression : variable_expression -> string
+
+val string_of_template : t -> string

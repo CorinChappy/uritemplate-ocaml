@@ -1,3 +1,5 @@
+module Buffer = Stdcompat.Buffer
+
 type value_modifier =
   | NoModifier
   | Prefix of int (* {var:N} *)

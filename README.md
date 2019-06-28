@@ -3,7 +3,7 @@ uritemplate-ocaml
 
 Work in progress implementation of URI templates for OCaml. (RFC6570 - http://tools.ietf.org/html/rfc6570)
 
-**Currently compliant to level 4**
+**Compliant to level 4**
 
 ODoc documentation avaliable [here](https://corinchappy.github.io/uritemplate-ocaml/).
 
